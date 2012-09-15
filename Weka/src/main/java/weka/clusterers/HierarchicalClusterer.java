@@ -85,6 +85,7 @@ import weka.core.Capabilities.Capability;
  * 
  * @author Remco Bouckaert (rrb@xm.co.nz, remco@cs.waikato.ac.nz)
  * @author Eibe Frank (eibe@cs.waikato.ac.nz)
+ * @author Ruogu Hu (ruogu@seas.upenn.edu)
  * @version $Revision: 6592 $
  */
 public class HierarchicalClusterer extends AbstractClusterer implements OptionHandler, CapabilitiesHandler, Drawable {
@@ -186,6 +187,7 @@ public class HierarchicalClusterer extends AbstractClusterer implements OptionHa
         double m_fLeftLength = 0;
         double m_fRightLength = 0;
         double m_fHeight = 0;
+        double m_childDist = 0;
         public String toString(int attIndex) {
             DecimalFormat myFormatter = new DecimalFormat("#.#####");
 
@@ -208,33 +210,33 @@ public class HierarchicalClusterer extends AbstractClusterer implements OptionHa
         }
         public String toJsonString(int attIndex) {
             DecimalFormat myFormatter = new DecimalFormat("#.#####");
-            
+            Matcher m = null;
             if (m_left == null) {
                 if (m_right == null) {
-                    return "[2, {\"id\":\"" + m_instances.instance(m_iLeftInstance).stringValue(attIndex) + "\"}, {\"id\":\"" +
+                    return "[2," + (m_parent != null ? m_parent.m_childDist : -1) + ",{\"id\":\"" + m_instances.instance(m_iLeftInstance).stringValue(attIndex) + "\"},{\"id\":\"" +
                             m_instances.instance(m_iRightInstance).stringValue(attIndex) + "\"}]";
                 } else {
                     String right_json = m_right.toJsonString(attIndex);
-                    Matcher m = pattern.matcher(right_json);
+                    m = pattern.matcher(right_json);
                     int right = 0;
                     if (m.lookingAt())
                         right = Integer.parseInt(right_json.substring(1, m.end()-1));
-                    return "[" + (right + 1) + ", {\"id\":\"" + m_instances.instance(m_iLeftInstance).stringValue(attIndex) + "\"}, " +
+                    return "[" + (right + 1) + "," + (m_parent != null ? m_parent.m_childDist : -1) + ",{\"id\":\"" + m_instances.instance(m_iLeftInstance).stringValue(attIndex) + "\"}," +
                     right_json + "]";
                 }
             } else {
                 if (m_right == null) {
                     String left_json = m_left.toJsonString(attIndex);
-                    Matcher m = pattern.matcher(left_json);
+                    m = pattern.matcher(left_json);
                     int left = 0;
                     if (m.lookingAt())
                         left = Integer.parseInt(left_json.substring(1, m.end()-1));
-                    return "[" + (left + 1) + "," + left_json + ", {\"id\":\"" +
+                    return "[" + (left + 1) + "," + (m_parent != null ? m_parent.m_childDist : -1) + "," + left_json + ",{\"id\":\"" +
                     m_instances.instance(m_iRightInstance).stringValue(attIndex) + "\"}]";
                 } else {
                     String left_json = m_left.toJsonString(attIndex);
                     String right_json = m_right.toJsonString(attIndex);
-                    Matcher m = pattern.matcher(left_json);
+                    m = pattern.matcher(left_json);
                     int left = 0;
                     if (m.lookingAt())
                         left = Integer.parseInt(left_json.substring(1, m.end()-1));
@@ -242,7 +244,7 @@ public class HierarchicalClusterer extends AbstractClusterer implements OptionHa
                     m = pattern.matcher(right_json);
                     if (m.lookingAt())
                         right = Integer.parseInt(right_json.substring(1, m.end()-1));
-                    return "[" + (left + right) + ", " + left_json + ", " + right_json + "]";
+                    return "["  + (left + right) + "," + (m_parent != null ? m_parent.m_childDist : -1) + "," + left_json + "," + right_json + "]";
                 }
             }
         }
@@ -579,6 +581,8 @@ public class HierarchicalClusterer extends AbstractClusterer implements OptionHa
     void merge(int iMin1, int iMin2, double fDist1, double fDist2, Vector<Integer>[] nClusterID, Node [] clusterNodes) {
         if (m_bDebug) {
             System.err.println("Merging " + iMin1 + " " + iMin2 + " " + fDist1 + " " + fDist2);
+        } else {
+            //System.err.println("Merging " + iMin1 + " " + iMin2 + " " + fDist1 + " " + fDist2);
         }
         if (iMin1 > iMin2) {
             int h = iMin1; iMin1 = iMin2; iMin2 = h;
@@ -589,6 +593,7 @@ public class HierarchicalClusterer extends AbstractClusterer implements OptionHa
 
         // track hierarchy
         Node node = new Node();
+        node.m_childDist = fDist1;
         if (clusterNodes[iMin1] == null) {
             node.m_iLeftInstance = iMin1;
         } else {
@@ -1192,7 +1197,7 @@ public class HierarchicalClusterer extends AbstractClusterer implements OptionHa
         } else {
             sNewick = m_clusters[0].toJsonString(attIndex);
         }
-        return "JSON:" + sNewick;
+        return sNewick;
     }
 
     public int graphType() {
