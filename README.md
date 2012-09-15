@@ -1,4 +1,4 @@
-weka
+Weka
 ====
 
-My port of weka
+My port of Weka (http://www.cs.waikato.ac.nz/ml/weka/).
